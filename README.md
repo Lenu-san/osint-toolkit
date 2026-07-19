@@ -15,6 +15,9 @@ python osint.py username <pseudo>    # cherche un pseudo sur plusieurs plateform
 python osint.py dns <domaine>        # enregistrements DNS (A, AAAA, MX, TXT, NS, SOA...)
 python osint.py whois <domaine>      # WHOIS via le protocole natif (port 43)
 python osint.py ip [adresse]         # géolocalisation / infos réseau (IP vide = la vôtre)
+python osint.py tls <hôte>           # inspecte le certificat TLS d'un serveur
+python osint.py headers <url>        # note les en-têtes de sécurité HTTP
+python osint.py subdomains <domaine> # sous-domaines via Certificate Transparency
 ```
 
 Exemples :
@@ -24,6 +27,9 @@ python osint.py username torvalds
 python osint.py dns github.com
 python osint.py whois github.com
 python osint.py ip 1.1.1.1
+python osint.py tls github.com
+python osint.py headers github.com
+python osint.py subdomains github.com
 ```
 
 ## Les outils
@@ -42,16 +48,28 @@ Implémentation du protocole WHOIS en sockets bruts : on demande d'abord à IANA
 ### ip
 Géolocalisation et informations réseau (pays, ville, FAI, organisation, numéro d'AS, reverse DNS) via l'API gratuite ip-api.com.
 
+### tls
+Établit une poignée de main TLS et lit le certificat présenté : émetteur, sujet, période de validité, jours avant expiration, domaines couverts (SAN), version du protocole et suite cryptographique. Un certificat invalide (expiré, auto-signé) est signalé avec sa raison — une info de reconnaissance en soi.
+
+### headers
+Analyse les en-têtes de sécurité HTTP d'un site (HSTS, CSP, X-Frame-Options, X-Content-Type-Options, Referrer-Policy, Permissions-Policy) et attribue une note de A à F. Purement défensif : une seule requête GET, comme un navigateur.
+
+### subdomains
+Énumère les sous-domaines de façon passive via les logs publics de Certificate Transparency (crt.sh). Aucune requête n'est envoyée vers la cible : on lit les certificats déjà émis publiquement. Les emails et faux domaines présents dans les certificats sont filtrés pour ne garder que de vrais sous-domaines.
+
 ## Architecture
 
 ```
 osint.py              point d'entrée CLI (dispatcher argparse)
 osintkit/
-  http.py             helpers GET / GET JSON partagés (urllib)
+  http.py             helpers GET / GET JSON / GET complet (urllib)
   username.py         recherche de pseudo multi-plateformes
   dns_recon.py        reconnaissance DNS over HTTPS
   whois_lookup.py     client WHOIS (socket port 43)
   ip_info.py          géolocalisation IP
+  tls_info.py         inspection de certificat TLS (ssl + socket)
+  security_headers.py analyse des en-têtes de sécurité HTTP
+  subdomains.py       énumération via Certificate Transparency
 ```
 
 Chaque outil est un module indépendant réutilisable en import : `from osintkit import dns_recon`.

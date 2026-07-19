@@ -36,3 +36,25 @@ def get_json(url, headers=None, timeout=8):
         merged.update(headers)
     status, body = get(url, headers=merged, timeout=timeout)
     return status, json.loads(body)
+
+
+def get_full(url, headers=None, timeout=8):
+    """GET renvoyant (status, headers, body).
+
+    headers est l'objet renvoyé par urllib : sa méthode .get() est
+    insensible à la casse, ce qui convient pour analyser les en-têtes.
+    Les redirections (http -> https) sont suivies automatiquement.
+    """
+    req = urllib.request.Request(url, method="GET")
+    req.add_header("User-Agent", USER_AGENT)
+    if headers:
+        for key, value in headers.items():
+            req.add_header(key, value)
+
+    try:
+        with urllib.request.urlopen(req, timeout=timeout) as resp:
+            body = resp.read().decode("utf-8", errors="replace")
+            return resp.status, resp.headers, body
+    except urllib.error.HTTPError as exc:
+        body = exc.read().decode("utf-8", errors="replace")
+        return exc.code, exc.headers, body

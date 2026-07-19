@@ -6,12 +6,18 @@ Sous-commandes :
   dns <domaine>       reconnaissance DNS (A, MX, TXT, NS...)
   whois <domaine>     WHOIS via le protocole natif (port 43)
   ip [adresse]        géolocalisation / infos réseau d'une IP
+  tls <hôte>          inspecte le certificat TLS d'un serveur
+  headers <url>       note les en-têtes de sécurité HTTP
+  subdomains <dom>    sous-domaines via Certificate Transparency
 
 Exemples :
   python osint.py username torvalds
   python osint.py dns github.com
   python osint.py whois github.com
   python osint.py ip 1.1.1.1
+  python osint.py tls github.com
+  python osint.py headers github.com
+  python osint.py subdomains github.com
 """
 
 import argparse
@@ -25,7 +31,15 @@ for _stream in (sys.stdout, sys.stderr):
     except (AttributeError, ValueError):
         pass
 
-from osintkit import dns_recon, ip_info, username, whois_lookup
+from osintkit import (
+    dns_recon,
+    ip_info,
+    security_headers,
+    subdomains,
+    tls_info,
+    username,
+    whois_lookup,
+)
 
 GREEN = "\033[32m"
 RED = "\033[31m"
@@ -97,6 +111,61 @@ def cmd_ip(args):
         print(f"{label:<14} {value}")
 
 
+def cmd_tls(args):
+    print(f"Certificat TLS de {c(args.value, BOLD)}\n")
+    info = tls_info.inspect(args.value)
+    if not info["verified"]:
+        print(c(f"Vérification échouée : {info['error']}", RED))
+        return
+    print(f"{'Sujet (CN)':<16} {info['subject'].get('commonName', '?')}")
+    print(f"{'Émetteur':<16} {info['issuer'].get('organizationName', '?')}")
+    print(f"{'Valide du':<16} {info['not_before']:%Y-%m-%d}")
+    print(f"{'Valide au':<16} {info['not_after']:%Y-%m-%d}")
+
+    days = info["days_left"]
+    if info["expired"]:
+        expiry = c(f"EXPIRÉ depuis {-days} jour(s)", RED)
+    elif days < 21:
+        expiry = c(f"expire dans {days} jour(s)", RED)
+    else:
+        expiry = c(f"expire dans {days} jour(s)", GREEN)
+    print(f"{'Expiration':<16} {expiry}")
+
+    print(f"{'Protocole':<16} {info['tls_version']}  ({info['cipher']})")
+    print(f"{'Domaines (SAN)':<16} {len(info['san'])} nom(s)")
+    for name in info["san"][:15]:
+        print(f"                 {name}")
+    if len(info["san"]) > 15:
+        print(c(f"                 ... et {len(info['san']) - 15} autres", DIM))
+
+
+def cmd_headers(args):
+    print(f"En-têtes de sécurité de {c(args.value, BOLD)}\n")
+    report = security_headers.analyze(args.value)
+    for r in report["results"]:
+        if r["present"]:
+            mark = c("[+]", GREEN)
+            detail = ""
+        else:
+            mark = c("[-]", RED)
+            detail = c(f"  <- manquant : {r['why']}", DIM)
+        print(f"{mark} {r['name']}{detail}")
+
+    grade_color = GREEN if report["grade"] in ("A", "B") else RED
+    print(
+        f"\nNote : {c(report['grade'], grade_color + BOLD)} "
+        f"({report['score']}/{report['max']} points)"
+    )
+
+
+def cmd_subdomains(args):
+    print(f"Sous-domaines de {c(args.value, BOLD)} (via Certificate Transparency)\n")
+    subs = subdomains.enumerate_subdomains(args.value)
+    for sub in subs:
+        print(f"  {sub}")
+    print(f"\n{len(subs)} sous-domaine(s) distinct(s) trouvé(s).")
+
+
 def build_parser():
     parser = argparse.ArgumentParser(
         prog="osint",
@@ -119,6 +188,18 @@ def build_parser():
     p_ip = sub.add_parser("ip", help="géolocalisation / infos d'une IP")
     p_ip.add_argument("value", nargs="?", default="", help="l'IP (vide = la vôtre)")
     p_ip.set_defaults(func=cmd_ip)
+
+    p_tls = sub.add_parser("tls", help="inspecte le certificat TLS d'un serveur")
+    p_tls.add_argument("value", help="l'hôte (ex: github.com)")
+    p_tls.set_defaults(func=cmd_tls)
+
+    p_headers = sub.add_parser("headers", help="note les en-têtes de sécurité HTTP")
+    p_headers.add_argument("value", help="l'URL ou le domaine (ex: github.com)")
+    p_headers.set_defaults(func=cmd_headers)
+
+    p_subs = sub.add_parser("subdomains", help="sous-domaines via Certificate Transparency")
+    p_subs.add_argument("value", help="le domaine (ex: github.com)")
+    p_subs.set_defaults(func=cmd_subdomains)
 
     return parser
 
