@@ -8,6 +8,16 @@ Pensé pour un usage défensif et éducatif : vérifier sa propre empreinte publ
 
 Python 3.7 ou plus. Rien d'autre.
 
+## Installation
+
+```bash
+git clone https://github.com/Lenu-san/osint-toolkit.git
+cd osint-toolkit
+python osint.py --help
+```
+
+Aucune dépendance à installer.
+
 ## Utilisation
 
 ```bash
@@ -32,6 +42,21 @@ python osint.py tls github.com
 python osint.py headers github.com
 python osint.py subdomains github.com
 python osint.py email samples/exemple-phishing.eml
+```
+
+Exemple de sortie (`headers`) :
+
+```
+En-têtes de sécurité de github.com
+
+[+] Strict-Transport-Security
+[+] Content-Security-Policy
+[+] X-Frame-Options
+[+] X-Content-Type-Options
+[+] Referrer-Policy
+[-] Permissions-Policy  <- manquant : restreint les API navigateur (caméra, géoloc...)
+
+Note : A (7/8 points)
 ```
 
 ## Les outils
