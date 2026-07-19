@@ -9,6 +9,7 @@ Sous-commandes :
   tls <hôte>          inspecte le certificat TLS d'un serveur
   headers <url>       note les en-têtes de sécurité HTTP
   subdomains <dom>    sous-domaines via Certificate Transparency
+  email <fichier>     analyse des en-têtes d'e-mail (phishing/usurpation)
 
 Exemples :
   python osint.py username torvalds
@@ -18,6 +19,7 @@ Exemples :
   python osint.py tls github.com
   python osint.py headers github.com
   python osint.py subdomains github.com
+  python osint.py email message.eml
 """
 
 import argparse
@@ -33,6 +35,7 @@ for _stream in (sys.stdout, sys.stderr):
 
 from osintkit import (
     dns_recon,
+    email_headers,
     ip_info,
     security_headers,
     subdomains,
@@ -166,6 +169,26 @@ def cmd_subdomains(args):
     print(f"\n{len(subs)} sous-domaine(s) distinct(s) trouvé(s).")
 
 
+def cmd_email(args):
+    # utf-8-sig retire un éventuel BOM, sinon la 1re ligne n'est pas reconnue
+    # comme un en-tête et tout le message est lu comme du corps.
+    with open(args.value, encoding="utf-8-sig", errors="replace") as handle:
+        raw = handle.read()
+    result = email_headers.analyze(raw)
+
+    print(f"Analyse des en-têtes de {c(args.value, BOLD)}\n")
+    for label, value in result["infos"].items():
+        print(f"{label:<24} {value}")
+
+    print()
+    if result["findings"]:
+        for f in result["findings"]:
+            colour = RED if f["level"] == "ALERTE" else (BOLD if f["level"] == "ATTENTION" else DIM)
+            print(f"{c('[' + f['level'] + ']', colour)} {f['message']}")
+    else:
+        print(c("Aucun indice d'usurpation détecté dans les en-têtes fournis.", GREEN))
+
+
 def build_parser():
     parser = argparse.ArgumentParser(
         prog="osint",
@@ -200,6 +223,10 @@ def build_parser():
     p_subs = sub.add_parser("subdomains", help="sous-domaines via Certificate Transparency")
     p_subs.add_argument("value", help="le domaine (ex: github.com)")
     p_subs.set_defaults(func=cmd_subdomains)
+
+    p_email = sub.add_parser("email", help="analyse des en-têtes d'un e-mail (phishing)")
+    p_email.add_argument("value", help="fichier .eml ou fichier d'en-têtes")
+    p_email.set_defaults(func=cmd_email)
 
     return parser
 

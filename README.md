@@ -18,6 +18,7 @@ python osint.py ip [adresse]         # géolocalisation / infos réseau (IP vide
 python osint.py tls <hôte>           # inspecte le certificat TLS d'un serveur
 python osint.py headers <url>        # note les en-têtes de sécurité HTTP
 python osint.py subdomains <domaine> # sous-domaines via Certificate Transparency
+python osint.py email <fichier>      # analyse d'en-têtes d'e-mail (phishing)
 ```
 
 Exemples :
@@ -30,6 +31,7 @@ python osint.py ip 1.1.1.1
 python osint.py tls github.com
 python osint.py headers github.com
 python osint.py subdomains github.com
+python osint.py email samples/exemple-phishing.eml
 ```
 
 ## Les outils
@@ -57,6 +59,9 @@ Analyse les en-têtes de sécurité HTTP d'un site (HSTS, CSP, X-Frame-Options, 
 ### subdomains
 Énumère les sous-domaines de façon passive via les logs publics de Certificate Transparency (crt.sh). Aucune requête n'est envoyée vers la cible : on lit les certificats déjà émis publiquement. Les emails et faux domaines présents dans les certificats sont filtrés pour ne garder que de vrais sous-domaines.
 
+### email
+Analyse les en-têtes d'un e-mail (fichier `.eml`) pour repérer des indices d'usurpation ou de phishing : résultats SPF/DKIM/DMARC, incohérence entre le domaine de l'expéditeur (From), l'enveloppe (Return-Path) et le Reply-To, nombre de sauts. Purement local, aucune donnée n'est envoyée sur le réseau. Utile en sensibilisation.
+
 ## Architecture
 
 ```
@@ -70,6 +75,7 @@ osintkit/
   tls_info.py         inspection de certificat TLS (ssl + socket)
   security_headers.py analyse des en-têtes de sécurité HTTP
   subdomains.py       énumération via Certificate Transparency
+  email_headers.py    analyse d'en-têtes d'e-mail (phishing/usurpation)
 ```
 
 Chaque outil est un module indépendant réutilisable en import : `from osintkit import dns_recon`.

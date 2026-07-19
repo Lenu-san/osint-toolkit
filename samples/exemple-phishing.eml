@@ -1,0 +1,10 @@
+Return-Path: <bounce@random-server.example>
+Authentication-Results: mx.google.com; spf=fail smtp.mailfrom=random-server.example; dkim=none; dmarc=fail
+Received: from unknown (unknown [203.0.113.10]) by mx.google.com
+From: Support Bancaire <securite@ma-banque.example>
+Reply-To: <recuperation@random-server.example>
+To: victime@example.com
+Subject: Action requise : verifiez votre compte
+Date: Mon, 19 Jul 2026 03:12:00 +0000
+
+Bonjour, veuillez confirmer vos informations en cliquant sur le lien.
