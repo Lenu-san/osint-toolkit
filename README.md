@@ -1,0 +1,65 @@
+# osint-toolkit
+
+Petits outils OSINT en ligne de commande, écrits en Python avec la bibliothèque standard uniquement. Aucune dépendance à installer, aucune clé d'API.
+
+Pensé pour un usage défensif et éducatif : vérifier sa propre empreinte publique, faire de la reconnaissance dans un cadre autorisé (pentest, CTF, audit de son propre domaine). À ne pas utiliser pour du harcèlement ou de la collecte massive de données personnelles.
+
+## Prérequis
+
+Python 3.7 ou plus. Rien d'autre.
+
+## Utilisation
+
+```bash
+python osint.py username <pseudo>    # cherche un pseudo sur plusieurs plateformes
+python osint.py dns <domaine>        # enregistrements DNS (A, AAAA, MX, TXT, NS, SOA...)
+python osint.py whois <domaine>      # WHOIS via le protocole natif (port 43)
+python osint.py ip [adresse]         # géolocalisation / infos réseau (IP vide = la vôtre)
+```
+
+Exemples :
+
+```bash
+python osint.py username torvalds
+python osint.py dns github.com
+python osint.py whois github.com
+python osint.py ip 1.1.1.1
+```
+
+## Les outils
+
+### username
+Interroge une dizaine de plateformes publiques (GitHub, GitLab, Keybase, TryHackMe, Telegram...) en parallèle et indique si le pseudo y existe. La détection se fait par code de statut HTTP ou par recherche d'un marqueur dans la page.
+
+Un point important : l'outil ne conclut « libre » que sur un vrai 404. Un blocage (429, 403...) est signalé comme **indéterminé**, jamais comme disponible — pour ne pas donner une fausse certitude.
+
+### dns
+Reconnaissance DNS via DNS-over-HTTPS (Cloudflare). Passer par DoH plutôt que par le resolver système permet de fonctionner même derrière un réseau qui filtre le port 53. Les enregistrements TXT longs (SPF...) sont recollés correctement.
+
+### whois
+Implémentation du protocole WHOIS en sockets bruts : on demande d'abord à IANA quel serveur fait autorité pour le TLD, puis on interroge ce serveur. Les champs utiles (registrar, dates, serveurs de noms, contact abuse) sont extraits ; la réponse brute reste accessible en secours.
+
+### ip
+Géolocalisation et informations réseau (pays, ville, FAI, organisation, numéro d'AS, reverse DNS) via l'API gratuite ip-api.com.
+
+## Architecture
+
+```
+osint.py              point d'entrée CLI (dispatcher argparse)
+osintkit/
+  http.py             helpers GET / GET JSON partagés (urllib)
+  username.py         recherche de pseudo multi-plateformes
+  dns_recon.py        reconnaissance DNS over HTTPS
+  whois_lookup.py     client WHOIS (socket port 43)
+  ip_info.py          géolocalisation IP
+```
+
+Chaque outil est un module indépendant réutilisable en import : `from osintkit import dns_recon`.
+
+## Note légale
+
+Ces outils n'interrogent que des sources publiques et des services conçus pour être consultés (WHOIS, DNS, pages de profil publiques). L'utilisateur reste responsable du respect des conditions d'utilisation des services et de la législation applicable, notamment sur les données personnelles.
+
+## Licence
+
+MIT
